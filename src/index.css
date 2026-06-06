@@ -1,0 +1,130 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@100..900&display=swap');
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+    --background: #001226;
+    --foreground: #ffffff;
+    --card: #001f3f;
+    --card-foreground: #ffffff;
+    --popover: #001f3f;
+    --popover-foreground: #ffffff;
+    --primary: #c5a059;
+    --primary-foreground: #001226;
+    --secondary: #002855;
+    --secondary-foreground: #ffffff;
+    --muted: #0c1a3d;
+    --muted-foreground: #a1b4d5;
+    --accent: #002855;
+    --accent-foreground: #c5a059;
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: #ffffff;
+    --border: #334267;
+    --input: #334267;
+    --ring: #c5a059;
+    --radius: 0rem;
+}
+
+@theme inline {
+    --font-heading: "Playfair Display", serif;
+    --font-sans: "Inter", sans-serif;
+    
+    --color-navy-50: #f1f3f9;
+    --color-navy-100: #e0e6f1;
+    --color-navy-200: #c6d1e6;
+    --color-navy-300: #a1b4d5;
+    --color-navy-400: #7b93c1;
+    --color-navy-500: #5d77ae;
+    --color-navy-600: #496096;
+    --color-navy-700: #3b4d7c;
+    --color-navy-800: #334267;
+    --color-navy-900: #2c3957;
+    --color-navy-950: #001226;
+
+    --color-gold-50: #fbf9f1;
+    --color-gold-100: #f4efdc;
+    --color-gold-200: #ebdca9;
+    --color-gold-300: #e0c26c;
+    --color-gold-400: #d6a941;
+    --color-gold-500: #c5a059;
+    --color-gold-600: #b58d4a;
+    --color-gold-700: #976f3d;
+    --color-gold-800: #7d5a36;
+    --color-gold-900: #684b30;
+    --color-gold-950: #3b2818;
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+}
+
+
+.dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+  html {
+    @apply font-sans;
+    }
+}
