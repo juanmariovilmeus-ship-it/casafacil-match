@@ -104,76 +104,53 @@ export default function HomeScreen() {
   const fetchImoveis = async () => {
     setIsLoading(true);
     try {
-      // Chamada real ao Supabase: Supabase.instance.client.from('imoveis').select()
-      // DICA SÓCIO TÉCNICO: No futuro, para buscar diretamente no Supabase em tempo real com ilike, trocaríamos por:
-      // const { data, error } = await supabase.from('imoveis').select('*').or(`bairro.ilike.%${searchQuery}%,cidade.ilike.%${searchQuery}%`);
+      // ✅ Busca TODOS os imóveis do Supabase — visível para qualquer usuário/dispositivo
       const { data, error } = await supabase
         .from('imoveis')
-        .select('*');
+        .select('*')
+        .order('created_at', { ascending: false });
 
       let baseImoveis: Imovel[] = [];
       if (error) {
-        console.error('Erro ao buscar imóveis:', error);
-        baseImoveis = [];
+        console.error('Erro ao buscar imóveis do Supabase:', error);
       } else {
-        // ✅ Mapeia nomes das colunas do Supabase para os usados nos componentes
-        baseImoveis = (data || []).map((im: any) => ({
-          ...im,
-          preco: im.preco_aluguel || im.preco || 0,
-          foto_url: (im.fotos_urls && im.fotos_urls.length > 0) ? im.fotos_urls[0] : (im.foto_url || ''),
-          uploaded_images: im.fotos_urls || [],
-          quartos: im.quantidade_quartos || im.quartos || 0,
-          banheiros: im.quantidade_banheiros || im.banheiros || 0,
-          vagas: im.vagas_garagem || im.vagas || 0,
-          status: im.status_imovel || im.status || 'disponivel',
-          curtidas: im.curtidas || 0,
-          whatsapp_proprietario: im.whatsapp_proprietario || '',
-        }));
-      }
-
-      // Merge with offline/locally published properties
-      const localAddedString = localStorage.getItem('casafacil_local_added_properties') || '[]';
-      const localAdded: Imovel[] = JSON.parse(localAddedString);
-
-      // Create indexed lookups for deduplication
-      const allImoveisMap: { [key: string]: Imovel } = {};
-      baseImoveis.forEach(im => {
-        allImoveisMap[im.id] = im;
-      });
-      localAdded.forEach(im => {
-        allImoveisMap[im.id] = im;
-      });
-
-      // Filter and enrich using dynamic extended metadata from localStorage
-      const extendedMetadata = JSON.parse(localStorage.getItem('casafacil_extended_metadata') || '{}');
-      const finalImoveis = Object.values(allImoveisMap)
-        .map(imovel => {
-          const metadata = extendedMetadata[imovel.id];
-          if (metadata) {
-            const displayBairro = [metadata.bairro, metadata.cidade, metadata.estado]
-              .filter(Boolean)
-              .join(', ');
-            return {
-              ...imovel,
-              ...metadata,
-              descricao: metadata.descricao || imovel.descricao,
-              bairro: displayBairro || imovel.bairro,
-              status: metadata.status || 'disponivel',
-              preco: metadata.price_rent || imovel.preco,
-              curtidas: metadata.curtidas ?? (imovel as any).curtidas ?? 0
-            };
-          }
+        // ✅ Mapeia os nomes das colunas do Supabase para os usados no app
+        baseImoveis = (data || []).map((im: any) => {
+          const fotos = im.fotos_urls || [];
+          const displayBairro = [im.bairro, im.cidade, im.estado]
+            .filter(Boolean)
+            .join(', ');
           return {
-            ...imovel,
-            status: (imovel as any).status || 'disponivel',
-            curtidas: (imovel as any).curtidas ?? 0
+            ...im,
+            titulo: im.titulo || '',
+            preco: im.preco_aluguel || im.preco || 0,
+            foto_url: fotos.length > 0 ? fotos[0] : (im.foto_url || ''),
+            uploaded_images: fotos,
+            quartos: im.quantidade_quartos || im.quartos || 0,
+            banheiros: im.quantidade_banheiros || im.banheiros || 0,
+            vagas: im.vagas_garagem || im.vagas || 0,
+            status: im.status_imovel || im.status || 'disponivel',
+            curtidas: im.curtidas || 0,
+            whatsapp_proprietario: im.whatsapp_proprietario || '',
+            bairro: displayBairro || im.bairro || '',
+            descricao: im.descricao || '',
           };
         });
+      }
 
+      // Merge com imóveis locais (offline) — sem duplicar os que já vieram do Supabase
+      const localAddedString = localStorage.getItem('casafacil_local_added_properties') || '[]';
+      const localAdded: Imovel[] = JSON.parse(localAddedString);
+      const supabaseIds = new Set(baseImoveis.map((im: any) => im.id));
+      const localOnly = localAdded.filter((im: any) => !supabaseIds.has(im.id));
+
+      const finalImoveis = [...baseImoveis, ...localOnly];
       setImoveis(finalImoveis);
     } catch (err) {
       console.error('Erro de conexão:', err);
-      setImoveis([]);
+      // Fallback total para localStorage se não houver internet
+      const localAddedString = localStorage.getItem('casafacil_local_added_properties') || '[]';
+      setImoveis(JSON.parse(localAddedString));
     } finally {
       setIsLoading(false);
     }

@@ -101,6 +101,7 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
   const [newNumero, setNewNumero] = useState('');
   const [newPrecoAluguel, setNewPrecoAluguel] = useState('');
   const [newWhatsapp, setNewWhatsapp] = useState('');
+  const [newStatus] = useState<'disponivel' | 'indisponivel'>('disponivel');
   const [newFotoUrl, setNewFotoUrl] = useState('');
 
   // Dynamic multi image upload states
@@ -182,17 +183,17 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
 
     setPublishing(true);
     try {
+      const rentValue = Number(newPrecoAluguel);
+      const primaryImage = uploadedImages.length > 0 ? uploadedImages[0] : newFotoUrl;
+      const todasFotos = uploadedImages.length > 0 ? uploadedImages : (newFotoUrl ? [newFotoUrl] : []);
+      const displayBairro = [newBairro, newCidade, newEstado].filter(Boolean).join(', ');
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error('Você precisa estar logado para publicar um imóvel.');
         setPublishing(false);
         return;
       }
-
-      const rentValue = Number(newPrecoAluguel);
-      const combinedBairro = [newBairro, newCidade, newEstado].filter(Boolean).join(', ');
-      const primaryImage = uploadedImages.length > 0 ? uploadedImages[0] : newFotoUrl;
-      const todasFotos = uploadedImages.length > 0 ? uploadedImages : (newFotoUrl ? [newFotoUrl] : []);
 
       // ✅ Payload com nomes EXATOS das colunas do Supabase
       const insertPayload = {
@@ -225,21 +226,22 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
         .select();
 
       if (error) {
-        console.error('Erro Supabase ao inserir imóvel:', error);
+        console.error('Erro Supabase:', error);
         toast.error(`Erro ao publicar: ${error.message}`);
         setPublishing(false);
         return;
       }
 
-      const remoteId = data?.[0]?.id || `prop-${Date.now()}`;
+      const activeId = data?.[0]?.id || `prop-${Date.now()}`;
 
-      // Salva localmente para aparecer no feed imediatamente sem recarregar
+      // ✅ Salva localmente também para aparecer no feed imediatamente
       const newPropertyObject = {
-        id: remoteId,
+        id: activeId,
         titulo: newTitle,
-        bairro: combinedBairro,
+        bairro: displayBairro,
         preco: rentValue,
         foto_url: primaryImage,
+        uploaded_images: todasFotos,
         descricao: newDesc,
         cep: newCEP,
         estado: newEstado,
@@ -254,7 +256,6 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
         cozinha_equipada: cozinhaEquipada,
         area_servico: areaServico,
         mobiliado: mobiliado,
-        uploaded_images: uploadedImages,
         curtidas: 0,
       };
 
@@ -277,7 +278,7 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
       onSuccess();
     } catch (err) {
       console.error(err);
-      toast.error('Ocorreu um erro inesperado ao publicar o imóvel.');
+      toast.error('Erro inesperado ao publicar o imóvel.');
     } finally {
       setPublishing(false);
     }
