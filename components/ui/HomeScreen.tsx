@@ -104,7 +104,7 @@ export default function HomeScreen() {
   const fetchImoveis = async () => {
     setIsLoading(true);
     try {
-      // ✅ Busca TODOS os imóveis do Supabase — visível para qualquer usuário/dispositivo
+      // ✅ Busca TODOS os imóveis do Supabase — qualquer usuário, qualquer dispositivo
       const { data, error } = await supabase
         .from('imoveis')
         .select('*')
@@ -114,7 +114,7 @@ export default function HomeScreen() {
       if (error) {
         console.error('Erro ao buscar imóveis do Supabase:', error);
       } else {
-        // ✅ Mapeia os nomes das colunas do Supabase para os usados no app
+        // ✅ Mapeia nomes das colunas do Supabase para os nomes usados no app
         baseImoveis = (data || []).map((im: any) => {
           const fotos = im.fotos_urls || [];
           const displayBairro = [im.bairro, im.cidade, im.estado]
@@ -138,17 +138,16 @@ export default function HomeScreen() {
         });
       }
 
-      // Merge com imóveis locais (offline) — sem duplicar os que já vieram do Supabase
+      // Merge com imóveis locais — só adiciona os que NÃO estão no Supabase
       const localAddedString = localStorage.getItem('casafacil_local_added_properties') || '[]';
       const localAdded: Imovel[] = JSON.parse(localAddedString);
       const supabaseIds = new Set(baseImoveis.map((im: any) => im.id));
       const localOnly = localAdded.filter((im: any) => !supabaseIds.has(im.id));
 
-      const finalImoveis = [...baseImoveis, ...localOnly];
-      setImoveis(finalImoveis);
+      setImoveis([...baseImoveis, ...localOnly]);
     } catch (err) {
       console.error('Erro de conexão:', err);
-      // Fallback total para localStorage se não houver internet
+      // Fallback offline
       const localAddedString = localStorage.getItem('casafacil_local_added_properties') || '[]';
       setImoveis(JSON.parse(localAddedString));
     } finally {

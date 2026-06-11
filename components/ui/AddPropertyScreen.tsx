@@ -188,6 +188,7 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
       const todasFotos = uploadedImages.length > 0 ? uploadedImages : (newFotoUrl ? [newFotoUrl] : []);
       const displayBairro = [newBairro, newCidade, newEstado].filter(Boolean).join(', ');
 
+      // Verifica se está logado
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error('Você precisa estar logado para publicar um imóvel.');
@@ -195,19 +196,19 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
         return;
       }
 
-      // ✅ Payload com nomes EXATOS das colunas do Supabase
+      // ✅ Insert com nomes EXATOS das colunas do Supabase
       const insertPayload = {
         proprietario_id: user.id,
         user_id: user.id,
         titulo: newTitle,
-        descricao: newDesc,
+        descricao: newDesc || '',
         preco_aluguel: rentValue,
-        estado: newEstado,
-        cidade: newCidade,
-        bairro: newBairro,
-        rua: newRua,
-        numero: newNumero,
-        cep: newCEP,
+        estado: newEstado || '',
+        cidade: newCidade || '',
+        bairro: newBairro || '',
+        rua: newRua || '',
+        numero: newNumero || '',
+        cep: newCEP || '',
         quantidade_quartos: numQuartos,
         quantidade_banheiros: numBanheiros,
         vagas_garagem: numVagas,
@@ -215,7 +216,7 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
         area_servico: areaServico,
         mobiliado: mobiliado,
         fotos_urls: todasFotos,
-        whatsapp_proprietario: newWhatsapp,
+        whatsapp_proprietario: newWhatsapp || '',
         status_imovel: 'disponivel',
         status: 'disponivel',
       };
@@ -226,7 +227,7 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
         .select();
 
       if (error) {
-        console.error('Erro Supabase:', error);
+        console.error('Erro Supabase ao inserir:', error);
         toast.error(`Erro ao publicar: ${error.message}`);
         setPublishing(false);
         return;
@@ -234,7 +235,7 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
 
       const activeId = data?.[0]?.id || `prop-${Date.now()}`;
 
-      // ✅ Salva localmente também para aparecer no feed imediatamente
+      // Salva localmente também para aparecer imediatamente no feed sem recarregar
       const newPropertyObject = {
         id: activeId,
         titulo: newTitle,
@@ -261,14 +262,14 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
 
       const localAddedString = localStorage.getItem('casafacil_local_added_properties') || '[]';
       const localAdded = JSON.parse(localAddedString);
-      localAdded.push(newPropertyObject);
+      // Evita duplicar se já existe
+      const alreadyExists = localAdded.find((im: any) => im.id === activeId);
+      if (!alreadyExists) localAdded.push(newPropertyObject);
       safeLocalStorageSetItem('casafacil_local_added_properties', JSON.stringify(localAdded));
 
-      toast.success('🏠 Imóvel publicado com sucesso no feed CasaFácil!', {
-        icon: <Sparkles className="w-4 h-4 text-gold-500" />
-      });
+      toast.success('🏠 Imóvel publicado com sucesso no feed CasaFácil!');
 
-      // Limpa o formulário
+      // Limpa formulário
       setNewTitle(''); setNewDesc(''); setNewCEP(''); setNewBairro('');
       setNewRua(''); setNewNumero(''); setNewPrecoAluguel(''); setNewWhatsapp('');
       setNewEstado(''); setNewCidade(''); setUploadedImages([]); setNewFotoUrl('');
