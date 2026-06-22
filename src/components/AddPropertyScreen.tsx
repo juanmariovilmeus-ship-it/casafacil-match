@@ -101,7 +101,6 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
   const [newNumero, setNewNumero] = useState('');
   const [newPrecoAluguel, setNewPrecoAluguel] = useState('');
   const [newWhatsapp, setNewWhatsapp] = useState('');
-  const [newStatus] = useState<'disponivel' | 'indisponivel'>('disponivel');
   const [newFotoUrl, setNewFotoUrl] = useState('');
 
   // Dynamic multi image upload states
@@ -183,99 +182,96 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
 
     setPublishing(true);
     try {
-      const generatedId = `prop-${Date.now()}`;
       const rentValue = Number(newPrecoAluguel);
-      const combinedBairro = [newBairro, newCidade, newEstado].filter(Boolean).join(', ');
-      
-      // Determine primary image
       const primaryImage = uploadedImages.length > 0 ? uploadedImages[0] : newFotoUrl;
+      const todasFotos = uploadedImages.length > 0 ? uploadedImages : (newFotoUrl ? [newFotoUrl] : []);
+      const displayBairro = [newBairro, newCidade, newEstado].filter(Boolean).join(', ');
 
-      // 1. Save standard fields in Supabase if allowed, else use custom backend
-      let supabaseSuccess = false;
-      let remoteId = '';
-      const { data: { user } } = await supabase.auth.getUser();
-
-      try {
-        const insertPayload: any = {
-          titulo: newTitle,
-          bairro: combinedBairro || newBairro,
-          preco: rentValue,
-          foto_url: primaryImage,
-        };
-        if (user) {
-          insertPayload.user_id = user.id;
-        }
-
-        const { data, error } = await supabase.from('imoveis').insert([insertPayload]).select();
-        
-        if (!error && data && data.length > 0) {
-          supabaseSuccess = true;
-          remoteId = data[0].id;
-        }
-      } catch (dbErr) {
-        console.warn('Supabase insert bypassed or rejected: saving fully locally.', dbErr);
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Erro de autenticação:', userError);
+        toast.error('Você precisa estar logado para publicar um imóvel. Faça login novamente.');
+        setPublishing(false);
+        return;
       }
 
-      const activeId = supabaseSuccess ? remoteId : generatedId;
+      // ✅ INSERT com nomes EXATOS das colunas reais do Supabase
+      const insertPayload = {
+        proprietario_id: user.id,
+        user_id: user.id,
+        titulo: newTitle,
+        descricao: newDesc || '',
+        preco_aluguel: rentValue,
+        estado: newEstado || '',
+        cidade: newCidade || '',
+        bairro: newBairro || '',
+        rua: newRua || '',
+        numero: newNumero || '',
+        cep: newCEP || '',
+        quantidade_quartos: numQuartos,
+        quantidade_banheiros: numBanheiros,
+        vagas_garagem: numVagas,
+        cozinha_equipada: cozinhaEquipada,
+        area_servico: areaServico,
+        mobiliado: mobiliado,
+        fotos_urls: todasFotos,
+        whatsapp_proprietario: newWhatsapp || '',
+        status_imovel: 'disponivel',
+        status: 'disponivel',
+      };
 
+      console.log('📤 Enviando para Supabase:', insertPayload);
+
+      const { data, error } = await supabase
+        .from('imoveis')
+        .insert([insertPayload])
+        .select();
+
+      if (error) {
+        // ✅ ERRO REAL é mostrado ao usuário — nunca mais engolido silenciosamente
+        console.error('❌ Erro Supabase ao inserir imóvel:', error);
+        toast.error(`Erro ao publicar no banco de dados: ${error.message}`);
+        setPublishing(false);
+        return;
+      }
+
+      console.log('✅ Imóvel salvo no Supabase com sucesso:', data);
+      const activeId = data?.[0]?.id || `prop-${Date.now()}`;
+
+      // Salva localmente também, para refletir no feed imediatamente
       const newPropertyObject = {
         id: activeId,
         titulo: newTitle,
-        bairro: combinedBairro,
+        bairro: displayBairro,
         preco: rentValue,
         foto_url: primaryImage,
-        descricao: newDesc,
-        cep: newCEP,
-        estado: newEstado,
-        cidade: newCidade,
-        rua: newRua,
-        numero: newNumero,
-        whatsapp_proprietario: newWhatsapp,
-        status: newStatus,
+        uploaded_images: todasFotos,
+        descricao: newDesc || '',
+        cep: newCEP || '',
+        estado: newEstado || '',
+        cidade: newCidade || '',
+        rua: newRua || '',
+        numero: newNumero || '',
+        whatsapp_proprietario: newWhatsapp || '',
+        status: 'disponivel',
         quartos: numQuartos,
         banheiros: numBanheiros,
         vagas: numVagas,
         cozinha_equipada: cozinhaEquipada,
         area_servico: areaServico,
         mobiliado: mobiliado,
-        uploaded_images: uploadedImages
+        curtidas: 0,
       };
 
-      // 2. Persist extended metadata dynamically mapped by ID
-      const extendedMetadata = JSON.parse(localStorage.getItem('casafacil_extended_metadata') || '{}');
-      extendedMetadata[activeId] = {
-        descricao: newDesc,
-        cep: newCEP,
-        estado: newEstado,
-        cidade: newCidade,
-        bairro: newBairro,
-        rua: newRua,
-        numero: newNumero,
-        price_rent: rentValue,
-        whatsapp_proprietario: newWhatsapp,
-        status: newStatus,
-        quartos: numQuartos,
-        banheiros: numBanheiros,
-        vagas: numVagas,
-        cozinha_equipada: cozinhaEquipada,
-        area_servico: areaServico,
-        mobiliado: mobiliado,
-        uploaded_images: uploadedImages,
-        owner_id: user?.id
-      };
-      safeLocalStorageSetItem('casafacil_extended_metadata', JSON.stringify(extendedMetadata));
-
-      // 3. Fallback for offline completeness: preserve list of local newly created
       const localAddedString = localStorage.getItem('casafacil_local_added_properties') || '[]';
       const localAdded = JSON.parse(localAddedString);
-      localAdded.push(newPropertyObject);
+      const alreadyExists = localAdded.find((im: any) => im.id === activeId);
+      if (!alreadyExists) localAdded.push(newPropertyObject);
       safeLocalStorageSetItem('casafacil_local_added_properties', JSON.stringify(localAdded));
 
-      toast.success('Excelente! Seu imóvel de alto padrão foi salvo, publicado e já está disponível no feed CasaFácil.', {
-        icon: <Sparkles className="w-4 h-4 text-gold-500" />
-      });
+      toast.success('🏠 Imóvel publicado com sucesso no banco de dados e no feed!');
 
-      // Clear the form fields
+      // Limpa formulário
       setNewTitle('');
       setNewDesc('');
       setNewCEP('');
@@ -284,7 +280,10 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
       setNewNumero('');
       setNewPrecoAluguel('');
       setNewWhatsapp('');
+      setNewEstado('');
+      setNewCidade('');
       setUploadedImages([]);
+      setNewFotoUrl('');
       setNumQuartos(2);
       setNumBanheiros(1);
       setNumVagas(1);
@@ -293,9 +292,9 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
       setMobiliado(false);
 
       onSuccess();
-    } catch (err) {
-      console.error(err);
-      toast.error('Ocorreu um erro ao publicar o imóvel.');
+    } catch (err: any) {
+      console.error('❌ Erro inesperado:', err);
+      toast.error(`Erro inesperado: ${err?.message || 'tente novamente'}`);
     } finally {
       setPublishing(false);
     }
