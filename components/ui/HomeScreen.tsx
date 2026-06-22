@@ -147,7 +147,6 @@ export default function HomeScreen() {
       setImoveis([...baseImoveis, ...localOnly]);
     } catch (err) {
       console.error('Erro de conexão:', err);
-      // Fallback offline
       const localAddedString = localStorage.getItem('casafacil_local_added_properties') || '[]';
       setImoveis(JSON.parse(localAddedString));
     } finally {

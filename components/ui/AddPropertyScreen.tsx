@@ -101,7 +101,6 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
   const [newNumero, setNewNumero] = useState('');
   const [newPrecoAluguel, setNewPrecoAluguel] = useState('');
   const [newWhatsapp, setNewWhatsapp] = useState('');
-  const [newStatus] = useState<'disponivel' | 'indisponivel'>('disponivel');
   const [newFotoUrl, setNewFotoUrl] = useState('');
 
   // Dynamic multi image upload states
@@ -188,15 +187,15 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
       const todasFotos = uploadedImages.length > 0 ? uploadedImages : (newFotoUrl ? [newFotoUrl] : []);
       const displayBairro = [newBairro, newCidade, newEstado].filter(Boolean).join(', ');
 
-      // Verifica se está logado
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error('Você precisa estar logado para publicar um imóvel.');
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Erro de autenticação:', userError);
+        toast.error('Você precisa estar logado para publicar um imóvel. Faça login novamente.');
         setPublishing(false);
         return;
       }
 
-      // ✅ Insert com nomes EXATOS das colunas do Supabase
+      // ✅ INSERT com nomes EXATOS das colunas reais do Supabase
       const insertPayload = {
         proprietario_id: user.id,
         user_id: user.id,
@@ -221,21 +220,25 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
         status: 'disponivel',
       };
 
+      console.log('📤 Enviando para Supabase:', insertPayload);
+
       const { data, error } = await supabase
         .from('imoveis')
         .insert([insertPayload])
         .select();
 
       if (error) {
-        console.error('Erro Supabase ao inserir:', error);
-        toast.error(`Erro ao publicar: ${error.message}`);
+        // ✅ ERRO REAL é mostrado ao usuário — nunca mais engolido silenciosamente
+        console.error('❌ Erro Supabase ao inserir imóvel:', error);
+        toast.error(`Erro ao publicar no banco de dados: ${error.message}`);
         setPublishing(false);
         return;
       }
 
+      console.log('✅ Imóvel salvo no Supabase com sucesso:', data);
       const activeId = data?.[0]?.id || `prop-${Date.now()}`;
 
-      // Salva localmente também para aparecer imediatamente no feed sem recarregar
+      // Salva localmente também, para refletir no feed imediatamente
       const newPropertyObject = {
         id: activeId,
         titulo: newTitle,
@@ -243,13 +246,13 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
         preco: rentValue,
         foto_url: primaryImage,
         uploaded_images: todasFotos,
-        descricao: newDesc,
-        cep: newCEP,
-        estado: newEstado,
-        cidade: newCidade,
-        rua: newRua,
-        numero: newNumero,
-        whatsapp_proprietario: newWhatsapp,
+        descricao: newDesc || '',
+        cep: newCEP || '',
+        estado: newEstado || '',
+        cidade: newCidade || '',
+        rua: newRua || '',
+        numero: newNumero || '',
+        whatsapp_proprietario: newWhatsapp || '',
         status: 'disponivel',
         quartos: numQuartos,
         banheiros: numBanheiros,
@@ -262,24 +265,36 @@ export default function AddPropertyScreen({ onBack, onSuccess }: AddPropertyScre
 
       const localAddedString = localStorage.getItem('casafacil_local_added_properties') || '[]';
       const localAdded = JSON.parse(localAddedString);
-      // Evita duplicar se já existe
       const alreadyExists = localAdded.find((im: any) => im.id === activeId);
       if (!alreadyExists) localAdded.push(newPropertyObject);
       safeLocalStorageSetItem('casafacil_local_added_properties', JSON.stringify(localAdded));
 
-      toast.success('🏠 Imóvel publicado com sucesso no feed CasaFácil!');
+      toast.success('🏠 Imóvel publicado com sucesso no banco de dados e no feed!');
 
       // Limpa formulário
-      setNewTitle(''); setNewDesc(''); setNewCEP(''); setNewBairro('');
-      setNewRua(''); setNewNumero(''); setNewPrecoAluguel(''); setNewWhatsapp('');
-      setNewEstado(''); setNewCidade(''); setUploadedImages([]); setNewFotoUrl('');
-      setNumQuartos(2); setNumBanheiros(1); setNumVagas(1);
-      setCozinhaEquipada(true); setAreaServico(true); setMobiliado(false);
+      setNewTitle('');
+      setNewDesc('');
+      setNewCEP('');
+      setNewBairro('');
+      setNewRua('');
+      setNewNumero('');
+      setNewPrecoAluguel('');
+      setNewWhatsapp('');
+      setNewEstado('');
+      setNewCidade('');
+      setUploadedImages([]);
+      setNewFotoUrl('');
+      setNumQuartos(2);
+      setNumBanheiros(1);
+      setNumVagas(1);
+      setCozinhaEquipada(true);
+      setAreaServico(true);
+      setMobiliado(false);
 
       onSuccess();
-    } catch (err) {
-      console.error(err);
-      toast.error('Erro inesperado ao publicar o imóvel.');
+    } catch (err: any) {
+      console.error('❌ Erro inesperado:', err);
+      toast.error(`Erro inesperado: ${err?.message || 'tente novamente'}`);
     } finally {
       setPublishing(false);
     }
